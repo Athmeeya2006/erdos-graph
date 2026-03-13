@@ -803,5 +803,5 @@ fig_d.savefig(OUT / "plot13d_summary_dashboard.png", dpi=150, bbox_inches="tight
 plt.close(fig_d)
 print("  ✓  plot13d_summary_dashboard.png")
 
-print(f"\nAll plots saved to {OUT}/")
+print("\nAll plots saved to the project root.")
 print("Done.")

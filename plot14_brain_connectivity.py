@@ -976,5 +976,5 @@ fig_d.savefig(OUT / "plot14d_brain_dashboard.png", dpi=150, bbox_inches="tight")
 plt.close(fig_d)
 print("  ✓  plot14d_brain_dashboard.png")
 
-print(f"\n[6/6] All plots saved to {OUT}/")
+print("\n[6/6] All plots saved to the project root.")
 print("Done.")
