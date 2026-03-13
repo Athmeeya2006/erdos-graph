@@ -4,16 +4,21 @@ plot13_real_world_mapping.py
 Phase 6 — Real-World Dataset Mapping
 Breaking the Null Model — Using Statistics to Reject ER
 
-Outputs (saved to media/images/erdos/):
+Outputs (saved to the project root):
     plot13a_degree_distribution.png   — log-log degree dist: S&P500 vs ER
     plot13b_comparison_table.png      — side-by-side metric table
     plot13c_ensemble_clustering.png   — ER ensemble histogram with C_real marked
     plot13d_summary_dashboard.png     — 4-panel combined dashboard
 
+Data sources:
+    1. Preferred: local cached adjusted-close CSV at
+       data/sp500_adj_close.csv or the path in ERDOS_PRICE_DATA.
+    2. Fallback: download daily adjusted close prices for a curated set of
+       S&P 500 stocks via yfinance, then cache the CSV locally.
+
 Method:
-    1. Download daily adjusted close prices for a curated set of S&P 500 stocks
-       (5 GICS sectors × ~20 tickers) via yfinance.
-    2. Compute a Pearson correlation matrix of daily log-returns over 3 years.
+    1. Load adjusted close prices over 3 years.
+    2. Compute a Pearson correlation matrix of daily log-returns.
     3. Threshold at |ρ| > τ to build a correlation network G_real.
     4. Compute network statistics: degree dist, clustering coefficient,
        average path length, assortativity.
@@ -24,6 +29,7 @@ Method:
 
 from __future__ import annotations
 
+import os
 import warnings
 import math
 import time
@@ -39,16 +45,23 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import FancyBboxPatch
 import networkx as nx
 import scipy.stats as stats
-import yfinance as yf
 from pathlib import Path
+
+try:
+    import yfinance as yf
+except ImportError:
+    yf = None
 
 warnings.filterwarnings("ignore")
 np.random.seed(42)
 random.seed(42)
 
 # ── Output directory ─────────────────────────────────────────────────────────
-OUT = Path("media/images/erdos")
-OUT.mkdir(parents=True, exist_ok=True)
+OUT = Path(".")
+
+DATA_DIR = Path("data")
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+CACHED_PRICE_DATA = Path(os.environ.get("ERDOS_PRICE_DATA", DATA_DIR / "sp500_adj_close.csv"))
 
 # ── Palette (consistent with rest of repo) ───────────────────────────────────
 NAVY   = "#1A3A5C"
@@ -96,24 +109,55 @@ SECTOR_COLORS = {
 # Correlation threshold to form an edge
 CORR_THRESHOLD = 0.50
 
+
+def load_adjusted_close_prices(
+    tickers: list[str],
+    start: str = "2021-01-01",
+    end: str = "2024-01-01",
+) -> pd.DataFrame:
+    """
+    Load adjusted close prices from a local CSV when available.
+
+    Falls back to yfinance only when no cached dataset is present, then writes
+    the download back to disk so future runs are reproducible and offline-safe.
+    """
+    if CACHED_PRICE_DATA.exists():
+        print(f"    → Loading cached price data from {CACHED_PRICE_DATA}")
+        close = pd.read_csv(CACHED_PRICE_DATA, index_col=0, parse_dates=True)
+        return close.sort_index()
+
+    if yf is None:
+        raise RuntimeError(
+            "No cached dataset found at "
+            f"{CACHED_PRICE_DATA} and yfinance is not installed. "
+            "Add a local CSV or install yfinance to fetch it."
+        )
+
+    print("    → No cached CSV found; downloading from Yahoo Finance")
+    raw = yf.download(
+        tickers,
+        start=start,
+        end=end,
+        auto_adjust=True,
+        progress=False,
+    )
+    if raw.empty or "Close" not in raw:
+        raise RuntimeError("Failed to download adjusted close data from yfinance.")
+
+    close = raw["Close"].copy()
+    close.to_csv(CACHED_PRICE_DATA)
+    print(f"    → Cached adjusted close prices to {CACHED_PRICE_DATA}")
+    return close
+
 # ════════════════════════════════════════════════════════════════════════════
 # 1. DATA DOWNLOAD & PREPROCESSING
 # ════════════════════════════════════════════════════════════════════════════
 print("=" * 65)
 print("Phase 6 — Real-World Dataset Mapping")
 print("=" * 65)
-print("\n[1/5] Downloading S&P 500 price data (2021-2024)…")
+print("\n[1/5] Loading S&P 500 price data (2021-2024)…")
 
-raw = yf.download(
-    ALL_TICKERS,
-    start="2021-01-01",
-    end="2024-01-01",
-    auto_adjust=True,
-    progress=False,
-)
-
-# yfinance MultiIndex: level 0 = price type, level 1 = ticker
-close = raw["Close"].copy()
+close = load_adjusted_close_prices(ALL_TICKERS)
 
 # Drop tickers with >10% missing data
 thresh = int(0.90 * len(close))

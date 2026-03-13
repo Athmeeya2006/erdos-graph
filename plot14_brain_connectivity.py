@@ -33,7 +33,7 @@ Signal propagation model (Honey et al. 2009, PNAS):
     where D = weighted degree, A = weighted adjacency, α = 0.35
     (discrete-time random-walk diffusion; seed node = highest-betweenness hub)
 
-Outputs  (media/images/erdos/):
+Outputs  (saved to the project root):
     plot14a_brain_connectome.png      — chord diagram with module colours
     plot14b_signal_propagation.png    — 3×5 activation snapshots grid
     plot14c_brain_vs_er.png           — ER ensemble null-model rejection
@@ -62,8 +62,7 @@ np.random.seed(SEED)
 random.seed(SEED)
 
 # ── Output directory ─────────────────────────────────────────────────────────
-OUT = Path("media/images/erdos")
-OUT.mkdir(parents=True, exist_ok=True)
+OUT = Path(".")
 
 # ── Palette ───────────────────────────────────────────────────────────────────
 BG    = "#020617"

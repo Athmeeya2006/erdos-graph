@@ -1,0 +1,7 @@
+matplotlib
+manim
+networkx
+numpy
+pandas
+scipy
+yfinance
